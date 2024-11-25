@@ -1,0 +1,20 @@
+menu "ESP-NOW Device Configuration"
+
+    choice DEVICE_MODE
+        prompt "Device Mode"
+        default DEVICE_MODE_SENDER
+        help
+            Select device operating mode.
+
+        config DEVICE_MODE_SENDER
+            bool "Sender (Color Sensor + LED Rings)"
+            help
+                Configure as sender device with TCS34725 color sensor and LED rings.
+
+        config DEVICE_MODE_RECEIVER
+            bool "Receiver (LCD Display)"
+            help
+                Configure as receiver device with LCD display.
+    endchoice
+
+endmenu
