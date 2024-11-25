@@ -1,32 +1,94 @@
-# _Sample project_
+# TCS34725 Color Sensor Project
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+## Overview
 
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+This project is designed to interface with the TCS34725 color sensor using an ESP32 microcontroller. The system is capable of detecting colors and controlling NeoPixel LED rings based on the detected colors. It also utilizes ESP-NOW for wireless communication between devices.
 
+## Features
 
+- **Color Detection**: Utilizes the TCS34725 sensor to detect RGB values and map them to predefined color names.
+- **LED Control**: Controls NeoPixel LED rings to display colors based on sensor readings.
+- **Wireless Communication**: Uses ESP-NOW for sending color data between devices.
+- **Deep Sleep Mode**: The system can enter a low-power deep sleep mode and wake up based on external signals or timers.
 
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
+## Components
 
-## Example folder contents
+- **TCS34725 Color Sensor**: Detects RGB values and clear light intensity.
+- **ESP32 Microcontroller**: Handles sensor data processing, LED control, and wireless communication.
+- **NeoPixel LED Rings**: Displays colors based on sensor readings.
+- **ESP-NOW**: Provides wireless communication capabilities.
 
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
+## Code Structure
 
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both). 
+### Main Application
 
-Below is short explanation of remaining files in the project folder.
+- **`main/main.c`**: Contains the main application logic, including initialization and wake-up handling.
+  ```c:main/main.c
+  startLine: 1
+  endLine: 110
+  ```
 
-```
-├── CMakeLists.txt
-├── main
-│   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
-```
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
-They are not used or needed when building with CMake and idf.py.
+### Color Sensor
+
+- **`components/TCS34725_colorsensor/TCS34725_colorsensor.c`**: Implements functions for interfacing with the TCS34725 sensor, including data acquisition and threshold management.
+  ```c:components/TCS34725_colorsensor/TCS34725_colorsensor.c
+  startLine: 1
+  endLine: 405
+  ```
+
+- **`components/TCS34725_colorsensor/include/TCS34725_colorsensor_private.h`**: Contains private definitions and configurations for the TCS34725 sensor.
+  ```c:components/TCS34725_colorsensor/include/TCS34725_colorsensor_private.h
+  startLine: 1
+  endLine: 136
+  ```
+
+- **`components/TCS34725_colorsensor/include/TCS34725_helper_functions.h`**: Declares helper functions for sensor operations.
+  ```c:components/TCS34725_colorsensor/include/TCS34725_helper_functions.h
+  startLine: 1
+  endLine: 46
+  ```
+
+- **`components/TCS34725_colorsensor/include/TCS34725_colorsensor.h`**: Provides public API functions for the TCS34725 sensor.
+  ```c:components/TCS34725_colorsensor/include/TCS34725_colorsensor.h
+  startLine: 1
+  endLine: 19
+  ```
+
+### NeoPixel LED Control
+
+- **`managed_components/zorxx__neopixel/neopixel.c`**: Manages NeoPixel LED operations, including initialization and pixel setting.
+  ```c:managed_components/zorxx__neopixel/neopixel.c
+  startLine: 1
+  endLine: 226
+  ```
+
+### ESP-NOW Communication
+
+- **`components/esp_now_handler/include/esp_now_handler.h`**: Defines functions for initializing ESP-NOW and managing data queues.
+  ```c:components/esp_now_handler/include/esp_now_handler.h
+  startLine: 1
+  endLine: 34
+  ```
+
+## Setup and Usage
+
+1. **Hardware Connections**: Connect the TCS34725 sensor and NeoPixel rings to the ESP32 as per the pin definitions in `main/pin_map.h`.
+   ```c:main/pin_map.h
+   startLine: 1
+   endLine: 17
+   ```
+
+2. **Build and Flash**: Use the ESP-IDF toolchain to build and flash the firmware onto the ESP32.
+
+3. **Operation**: The device will initialize and start detecting colors. It will control the NeoPixel rings and communicate color data via ESP-NOW.
+
+4. **Deep Sleep**: The system will enter deep sleep mode based on certain conditions and can be woken up by external signals or timers.
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+## Acknowledgments
+
+- Zorxx Software for the NeoPixel driver.
+- ESP-IDF for the development framework.
