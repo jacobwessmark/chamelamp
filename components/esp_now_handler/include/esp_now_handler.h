@@ -9,25 +9,24 @@
 #include <esp_mac.h>
 #include <string.h>
 #include "rgb_types.h"
+#include "esp_task_wdt.h"
 
-// ESP-NOW configuration
-#define ESPNOW_CHANNEL 1
-#define PRINTSCANRESULTS 0
-#define DELETEBEFOREPAIR 0
+// ESP-NOW Protocol Configuration
+#define ESPNOW_CHANNEL 1            // WiFi channel for ESP-NOW communication
+#define PRINTSCANRESULTS 0          // Disable WiFi scan result printing
+#define DELETEBEFOREPAIR 0          // Don't delete existing pairings
 
-// Task configuration
-#define ESP_NOW_TASK_STACK_SIZE 4096
-#define ESP_NOW_TASK_PRIORITY 5
-#define QUEUE_SIZE 10
+// Task Configuration
+#define ESP_NOW_TASK_STACK_SIZE 4096  // Stack size for ESP-NOW tasks
+#define ESP_NOW_TASK_PRIORITY 5       // Task priority (higher number = higher priority)
+#define QUEUE_SIZE 10                 // Maximum pending messages in queue
 
-// Task handle for the ESP-NOW tasks
-extern TaskHandle_t esp_now_task_handle;
+// Task Management
+extern TaskHandle_t esp_now_task_handle;  // Handle for ESP-NOW processing task
 
-// Function to initialize ESP-NOW sender
-esp_err_t initialize_esp_now_sender(void);
+// ESP-NOW Initialization Functions
+esp_err_t initialize_esp_now_sender(void);    // Initialize device as ESP-NOW sender
+esp_err_t initialize_esp_now_receiver(void);  // Initialize device as ESP-NOW receiver
 
-// Function to initialize ESP-NOW receiver
-esp_err_t initialize_esp_now_receiver(void);
-
-// Function to add RGB data to the sending queue
-void add_rgb_to_send_queue(const rgb_data_t *data);
+// Data Management Functions
+void add_rgb_to_send_queue(const rgb_data_t *data);  // Queue RGB data for transmission

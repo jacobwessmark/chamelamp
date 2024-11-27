@@ -1,6 +1,6 @@
 #pragma once
 
-// Required includes for private implementation
+// System and driver dependencies
 #include "driver/i2c_master.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -12,37 +12,37 @@
 #include "esp_sleep.h"
 #include <inttypes.h>
 
-// I2C definitions
-#define I2C_MASTER_FREQ_HZ 200000
-#define I2C_MASTER_PORT I2C_NUM_0
-#define TRANS_QUEUE_DEPTH 10
-#define PULL_UP_RESISTOR_MODE true
+// I2C Communication Configuration
+#define I2C_MASTER_FREQ_HZ 200000      // I2C master clock frequency
+#define I2C_MASTER_PORT I2C_NUM_0      // I2C port number
+#define TRANS_QUEUE_DEPTH 10           // I2C transaction queue depth
+#define PULL_UP_RESISTOR_MODE true     // Enable internal pull-up resistors
 
-// TCS34725 register definitions
-#define TCS3472_ADDRESS 0x29
-#define TCS34727_ID_VALUE 0x4D
-#define TCS34725_ID_VALUE 0x44
-#define TCS3472_ID 0x12
-#define TCS3472_COMMAND_BIT 0x80
+// TCS34725 Device Configuration
+#define TCS3472_ADDRESS 0x29           // Device I2C address
+#define TCS34727_ID_VALUE 0x4D         // Device ID for TCS34727
+#define TCS34725_ID_VALUE 0x44         // Device ID for TCS34725
+#define TCS3472_ID 0x12                // ID register address
+#define TCS3472_COMMAND_BIT 0x80       // Command bit for register access
 
-// Register addresses
-#define TCS3472_ENABLE 0x00
-#define TCS3472_ATIME 0x01
-#define TCS3472_WTIME 0x03
-#define TCS3472_CONFIG 0x0D
-#define TCS3472_CONTROL 0x0F
-#define TCS3472_STATUS 0x13
-#define TCS3472_PERS 0x0C
+// Register Map Definitions
+#define TCS3472_ENABLE 0x00            // Enable register
+#define TCS3472_ATIME 0x01            // RGBC timing register
+#define TCS3472_WTIME 0x03            // Wait time register
+#define TCS3472_CONFIG 0x0D           // Configuration register
+#define TCS3472_CONTROL 0x0F          // Control register
+#define TCS3472_STATUS 0x13           // Device status register
+#define TCS3472_PERS 0x0C             // Persistence register
 
-// Color Data Registers
-#define TCS3472_CDATAL 0x14
-#define TCS3472_CDATAH 0x15
-#define TCS3472_RDATAL 0x16
-#define TCS3472_RDATAH 0x17
-#define TCS3472_GDATAL 0x18
-#define TCS3472_GDATAH 0x19
-#define TCS3472_BDATAL 0x1A
-#define TCS3472_BDATAH 0x1B
+// Color Data Register Addresses
+#define TCS3472_CDATAL 0x14           // Clear data low byte
+#define TCS3472_CDATAH 0x15           // Clear data high byte
+#define TCS3472_RDATAL 0x16           // Red data low byte
+#define TCS3472_RDATAH 0x17           // Red data high byte
+#define TCS3472_GDATAL 0x18           // Green data low byte
+#define TCS3472_GDATAH 0x19           // Green data high byte
+#define TCS3472_BDATAL 0x1A           // Blue data low byte
+#define TCS3472_BDATAH 0x1B           // Blue data high byte
 
 // Interrupt Threshold Registers
 #define TCS3472_AILTL 0x04
@@ -85,39 +85,27 @@
 #define TCS3472_STATUS_AINT 0x10
 
 // Threshold calculation defines
-#define THRESHOLD_PERCENTAGE_BELOW 80
-#define THRESHOLD_PERCENTAGE_ABOVE 120
-#define THRESHOLD_MIN_DIFFERENCE 1000
-#define THRESHOLD_MIN_VALUE 100
-#define THRESHOLD_MAX_VALUE 65000
-#define THRESHOLD_SAFETY_MARGIN 500
+#define THRESHOLD_PERCENTAGE_BELOW 90   // Lower threshold percentage
+#define THRESHOLD_PERCENTAGE_ABOVE 110  // Upper threshold percentage
+#define THRESHOLD_MIN_DIFFERENCE 1000   // Minimum difference between thresholds
+#define THRESHOLD_MIN_VALUE 100        // Minimum threshold value
+#define THRESHOLD_MAX_VALUE 65000      // Maximum threshold value
+#define THRESHOLD_SAFETY_MARGIN 500    // Safety margin for threshold calculations
 
-// Event group bits (defined only once)
-#define SENSOR_INT_BIT (1 << 0)
+// Color Detection Configuration
+#define NUM_RGB_COLORS (sizeof(rgb_colors) / sizeof(rgb_colors[0]))  // Number of predefined colors
+#define STABLE_COLOR_THRESHOLD 3       // Required consecutive matches for color detection
+#define STABLE_BLACK_THRESHOLD 10      // Required consecutive matches for black detection
+#define TOLERANCE 5                    // Allowable color variation threshold
 
-// Retry settings
-#define MAX_RETRIES 3
-#define RETRY_DELAY_US 50000
+// Black Color Detection Parameters
+#define BLACK_THRESHOLD_PERCENTAGE 0.01 // Percentage of maximum value (65535) for black detection
 
-// Sampling configuration
-#define SAMPLE_NUMBER 5
+// Deep Sleep Configuration
+#define THRESHOLD_UPDATE_INTERVAL_US 2 * 1000000  // Threshold update interval in microseconds
 
-// Number of colors in the rgb_colors array
-#define NUM_RGB_COLORS (sizeof(rgb_colors) / sizeof(rgb_colors[0]))
-
-// Stable color threshold and tolerance
-#define STABLE_COLOR_THRESHOLD 100 // Required matches before sending
-#define TOLERANCE 5                // Allow small variations in color
-
-// Define the percentage threshold for detecting black color
-// This value is used to determine if the RGB values are low enough to be considered black
-// How to use: 0.01 = 1% of the max value (65535), so if lower than 655.35, it's black
-#define BLACK_THRESHOLD_PERCENTAGE 0.05
-
-// Color array declaration
+// External variable declarations
 extern RGBColor rgb_colors[];
-
-// Add near the top with other static variables
 extern gpio_num_t tcs_scl_pin;
 extern gpio_num_t tcs_sda_pin;
 extern gpio_num_t tcs_int_pin;

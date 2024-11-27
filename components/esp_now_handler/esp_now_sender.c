@@ -79,6 +79,9 @@ static void esp_now_send_task(void *param)
 {
     rgb_data_t rgb_data;
 
+    // Add this task to the WDT
+    esp_task_wdt_add(NULL);
+
     while (1)
     {
         if (xQueueReceive(rgb_send_queue, &rgb_data, portMAX_DELAY) == pdTRUE)
@@ -97,7 +100,8 @@ static void esp_now_send_task(void *param)
                 ESP_LOGE(TAG, "Failed to send RGB data: %s", esp_err_to_name(result));
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(10));
+        esp_task_wdt_reset();
     }
 }
 

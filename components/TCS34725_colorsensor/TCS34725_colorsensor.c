@@ -3,65 +3,70 @@
 #include "TCS34725_helper_functions.h"
 #include "esp_log.h"
 #include "esp_now_handler.h"
+#include "esp_task_wdt.h"
 
+// Module identification for logging
 static const char *TAG = "TCS34725";
 
+// I2C communication handles
 i2c_master_bus_handle_t i2c_bus_handle;
 i2c_master_dev_handle_t i2c_dev_handle;
 
-// I2C semaphore
+// Synchronization primitive for I2C bus access
 SemaphoreHandle_t i2c_semaphore;
 
-// Define black threshold
+// Minimum RGB value to distinguish from black color
 uint8_t BLACK_THRESHOLD = 100;
 
+// Predefined color definitions with RGB values
+// Each color includes variations to improve recognition accuracy
 RGBColor rgb_colors[] = {
-    // Pure Red and variants
-    {"Red", 255, 0, 0},
-    {"Bright Red", 255, 20, 20},
-    {"Dark Red", 200, 0, 0},
-    {"Deep Red", 180, 0, 0},
-    {"Ruby Red", 155, 0, 20},
+    // Red spectrum colors
+    {"Red", 255, 0, 0},              // Pure red
+    {"Bright Red", 255, 20, 20},     // Slightly lighter red
+    {"Dark Red", 200, 0, 0},         // Darker shade of red
+    {"Deep Red", 180, 0, 0},         // Very dark red
+    {"Ruby Red", 155, 0, 20},        // Red with slight blue tint
 
-    // Red-Orange spectrum
-    {"Reddish-Orange", 255, 64, 0},
-    {"Orange", 255, 128, 0},
-    {"Yellow-Orange", 255, 191, 0},
+    // Orange spectrum colors
+    {"Reddish-Orange", 255, 64, 0},  // Red-leaning orange
+    {"Orange", 255, 128, 0},         // Pure orange
+    {"Yellow-Orange", 255, 191, 0},  // Orange-yellow transition
 
-    // Yellows
-    {"Yellow", 255, 255, 0},
-    {"Dark Yellow", 204, 204, 0},
-    {"Yellow-Green", 191, 255, 0},
+    // Yellow spectrum colors
+    {"Yellow", 255, 255, 0},         // Pure yellow
+    {"Dark Yellow", 204, 204, 0},    // Muted yellow
+    {"Yellow-Green", 191, 255, 0},   // Yellow with green tint
 
-    // Greens
-    {"Green", 0, 255, 0},
-    {"Spring Green", 0, 255, 127},
-    {"Lime Green", 50, 205, 50},
+    // Green spectrum colors
+    {"Green", 0, 255, 0},            // Pure green
+    {"Spring Green", 0, 255, 127},   // Bright yellow-green
+    {"Lime Green", 50, 205, 50},     // Natural green
 
-    // Blues and Cyans
-    {"Cyan", 0, 255, 255},
-    {"Light Blue", 0, 127, 255},
-    {"Blue", 0, 0, 255},
+    // Blue and Cyan spectrum colors
+    {"Cyan", 0, 255, 255},           // Pure cyan
+    {"Light Blue", 0, 127, 255},     // Sky blue
+    {"Blue", 0, 0, 255},             // Pure blue
 
-    // Purples and Pinks
-    {"Purple", 128, 0, 128},
-    {"Pink", 255, 0, 128},
-    {"Crimson", 220, 20, 60},
+    // Purple and Pink spectrum colors
+    {"Purple", 128, 0, 128},         // Pure purple
+    {"Pink", 255, 0, 128},           // Bright pink
 
 };
 
-// Map 16-bit value to 8-bit range
+// Map a 16-bit value to an 8-bit range
 uint8_t map_value(uint16_t x, uint16_t in_min, uint16_t in_max, uint8_t out_min, uint8_t out_max)
 {
     return (uint8_t)((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min);
 }
 
-// Function to find the closest predefined color
+// Get the closest color to the given RGB values
 const RGBColor *get_closest_color(uint8_t avg_r, uint8_t avg_g, uint8_t avg_b)
 {
     int closest_index = 0;
     int min_diff = 255 * 3;
 
+    // Compare input color with each predefined color
     for (int i = 0; i < NUM_RGB_COLORS; ++i)
     {
         int diff_r = abs(avg_r - rgb_colors[i].r);
@@ -83,8 +88,7 @@ esp_err_t update_thresholds_from_clear(void)
 {
     uint16_t r, g, b, clear;
     esp_err_t ret;
-
-    while (1) // Loop until thresholds are set successfully
+    while (1)
     {
         ret = get_raw_data(&r, &g, &b, &clear);
         if (ret != ESP_OK)
@@ -92,32 +96,10 @@ esp_err_t update_thresholds_from_clear(void)
             ESP_LOGE(TAG, "Failed to read sensor data");
             return ret;
         }
-
         ESP_LOGI(TAG, "Current clear value: %u", clear);
-
         // Calculate thresholds as percentages of current value
-        uint32_t low_threshold = (clear * THRESHOLD_PERCENTAGE_BELOW) / 100;  // 70% of current value
-        uint32_t high_threshold = (clear * THRESHOLD_PERCENTAGE_ABOVE) / 100; // 130% of current value
-
-        // Ensure minimum difference between thresholds
-        if (high_threshold - low_threshold < 1000)
-        {
-            low_threshold = (clear > 500) ? clear - 500 : 0;
-            high_threshold = clear + 500;
-        }
-
-        // Apply safety limits
-        if (low_threshold < 100)
-            low_threshold = 100;
-        if (high_threshold > 65000)
-            high_threshold = 65000;
-
-        // Ensure high_threshold is greater than low_threshold
-        if (high_threshold <= low_threshold)
-        {
-            high_threshold = low_threshold + 1000; // Ensure a minimum gap
-        }
-
+        uint32_t low_threshold = (clear * THRESHOLD_PERCENTAGE_BELOW) / 100;  // 95% of current value
+        uint32_t high_threshold = (clear * THRESHOLD_PERCENTAGE_ABOVE) / 100; // 105% of current value
         ESP_LOGI(TAG, "Setting new thresholds - Low: %" PRIu32 ", High: %" PRIu32,
                  low_threshold, high_threshold);
 
@@ -127,7 +109,6 @@ esp_err_t update_thresholds_from_clear(void)
             ESP_LOGE(TAG, "Failed to set interrupt thresholds");
             return ret;
         }
-
         // Re-read the clear channel to verify it's within the new thresholds
         ret = get_raw_data(&r, &g, &b, &clear);
         if (ret != ESP_OK)
@@ -135,7 +116,6 @@ esp_err_t update_thresholds_from_clear(void)
             ESP_LOGE(TAG, "Failed to read sensor data after setting thresholds");
             return ret;
         }
-
         if (clear >= low_threshold && clear <= high_threshold)
         {
             break; // Exit loop if successful
@@ -144,28 +124,33 @@ esp_err_t update_thresholds_from_clear(void)
         {
             ESP_LOGW(TAG, "Clear value %" PRIu16 " is out of the new threshold range [%" PRIu32 ", %" PRIu32 "], retrying...",
                      clear, low_threshold, high_threshold);
-            vTaskDelay(pdMS_TO_TICKS(100)); // Optional delay before retrying
+            vTaskDelay(pdMS_TO_TICKS(10)); // Optional delay before retrying
         }
     }
-
     return ESP_OK;
 }
 
 void data_acquisition_task(void *param)
 {
-    NeopixelRing *rings = (NeopixelRing *)param; // Cast param to a pointer to NeopixelRing pointers
-    NeopixelRing *big_ring = &rings[1];          // Access the first element
-    NeopixelRing *small_ring = &rings[0];        // Access the second element
+    // Subscribe to the task watchdog
+    esp_task_wdt_add(NULL);
+
+    // Initialize ring control structures
+    NeopixelRing *rings = (NeopixelRing *)param;
+    NeopixelRing *big_ring = &rings[1];          // Primary LED ring
+    NeopixelRing *small_ring = &rings[0];        // Secondary LED ring
+    
+    // Color measurement variables
     uint16_t r, g, b, c;
     uint8_t r_8bit, g_8bit, b_8bit;
     rgb_data_t rgb_data;
 
-    // Arrays to store the current colors for each LED
+    // LED color storage arrays
     uint8_t stored_r[big_ring->led_count];
     uint8_t stored_g[big_ring->led_count];
     uint8_t stored_b[big_ring->led_count];
 
-    // Initialize arrays to zero
+    // Initialize LED arrays to zero
     for (int i = 0; i < big_ring->led_count; i++)
     {
         stored_r[i] = 0;
@@ -173,15 +158,20 @@ void data_acquisition_task(void *param)
         stored_b[i] = 0;
     }
 
-    int filled_leds = 0;      // Track how many LEDs have been filled
-    int current_position = 0; // Current position to update
+    // LED animation control variables
+    int filled_leds = 0;      // Number of LEDs currently lit
+    int current_position = 0; // Current LED position for updates
 
-    // Variables for tracking stable color
+    // Color stability tracking variables
     uint8_t last_avg_r = 0, last_avg_g = 0, last_avg_b = 0;
     int stable_color_count = 0;
+    int black_detect_count = 0;
 
     while (1)
     {
+        // Reset watchdog timer to prevent system reset
+        esp_task_wdt_reset();
+
         if (get_raw_data(&r, &g, &b, &c) == ESP_OK)
         {
             // Map raw values to 8-bit RGB
@@ -195,34 +185,47 @@ void data_acquisition_task(void *param)
             uint8_t dynamic_black_threshold = (uint8_t)(c * BLACK_THRESHOLD_PERCENTAGE);
             if (r_8bit < dynamic_black_threshold && g_8bit < dynamic_black_threshold && b_8bit < dynamic_black_threshold)
             {
-                // Fade all LEDs to black
-                ESP_LOGI(TAG, "Black detected - fading to black");
-                fade_to_color(big_ring, 0, 0, 0);
-                fade_to_color(small_ring, 0, 0, 0);
-                //  Reset arrays and counters
-                memset(stored_r, 0, sizeof(stored_r));
-                memset(stored_g, 0, sizeof(stored_g));
-                memset(stored_b, 0, sizeof(stored_b));
-                filled_leds = 0;
-                current_position = 0;
-                stable_color_count = 0;
 
-                vTaskDelay(pdMS_TO_TICKS(500));
+                black_detect_count++;
+                if (black_detect_count >= STABLE_BLACK_THRESHOLD)
+                {
+                    // Fade all LEDs to black
+                    ESP_LOGI(TAG, "Black detected - fading to black");
+                    fade_to_color(big_ring, 0, 0, 0);
+                    fade_to_color(small_ring, 0, 0, 0);
 
-                // New thresholds with led turned off
-                update_thresholds_from_clear();
+                    // Send black color to the queue
+                    rgb_data.red = 0;
+                    rgb_data.green = 0;
+                    rgb_data.blue = 0;
+                    strncpy(rgb_data.color_name, "Black", sizeof(rgb_data.color_name) - 1);
+                    rgb_data.color_name[sizeof(rgb_data.color_name) - 1] = '\0'; // Ensure null termination
+                    add_rgb_to_send_queue(&rgb_data);
 
-                vTaskDelay(pdMS_TO_TICKS(500));
+                    // Reset arrays and counters
+                    memset(stored_r, 0, sizeof(stored_r));
+                    memset(stored_g, 0, sizeof(stored_g));
+                    memset(stored_b, 0, sizeof(stored_b));
+                    filled_leds = 0;
+                    current_position = 0;
+                    stable_color_count = 0;
+                    black_detect_count = 0;
 
-                // Clear any pending interrupts
-                ESP_ERROR_CHECK(clear_pending_interrupts());
+                    vTaskDelay(pdMS_TO_TICKS(500));
 
-                //ESP_ERROR_CHECK(enable_interrupt(false));
+                    // New thresholds with led turned off
+                    update_thresholds_from_clear();
 
-                vTaskDelay(pdMS_TO_TICKS(50));
+                    // Clear any pending interrupts
+                    ESP_ERROR_CHECK(clear_pending_interrupts());
 
-                // Deep sleep
-                esp_deep_sleep_start();
+                    // Deep sleep with deinitialized I2C driver
+                    deep_sleep_with_deinitialized_i2c(i2c_bus_handle);
+                }
+            }
+            else
+            {
+                black_detect_count = 0; // Reset if not black
             }
 
             // Find closest predefined color
@@ -251,9 +254,6 @@ void data_acquisition_task(void *param)
             uint8_t avg_g = sum_g / filled_leds;
             uint8_t avg_b = sum_b / filled_leds;
 
-            // Add a 5ms delay after calculating averages
-            vTaskDelay(pdMS_TO_TICKS(5));
-
             // Update all filled LEDs with the average color
             for (int i = 0; i < filled_leds; i++)
             {
@@ -269,7 +269,6 @@ void data_acquisition_task(void *param)
                     abs(avg_b - last_avg_b) <= TOLERANCE)
                 {
                     stable_color_count++;
-                    // ESP_LOGI(TAG, "Same color for %d rounds", stable_color_count);
 
                     // If color has been stable for enough rounds, send it
                     if (stable_color_count >= STABLE_COLOR_THRESHOLD)
@@ -283,11 +282,11 @@ void data_acquisition_task(void *param)
                         strncpy(rgb_data.color_name, final_color->name, sizeof(rgb_data.color_name) - 1);
                         rgb_data.color_name[sizeof(rgb_data.color_name) - 1] = '\0'; // Ensure null termination
 
+                        // Send the color to the queue
                         add_rgb_to_send_queue(&rgb_data);
-                        // ESP_LOGI(TAG, "Color stable - sent %s RGB: (%u, %u, %u)",
-                        //          rgb_data.color_name,
-                        //          (unsigned int)avg_r, (unsigned int)avg_g, (unsigned int)avg_b);
-                        stable_color_count = 0; // Reset counter after sending
+
+                        // Reset counter after sending
+                        stable_color_count = 0;
                     }
                 }
                 else
@@ -362,19 +361,13 @@ esp_err_t configure_and_initialize_sensor(gpio_num_t scl_pin, gpio_num_t sda_pin
     ESP_ERROR_CHECK(write8(TCS3472_ENABLE, TCS3472_ENABLE_PON | TCS3472_ENABLE_AEN));
     vTaskDelay(pdMS_TO_TICKS(50)); // Wait for ADC to stabilize
 
-    // Set persistence filter
-    ESP_ERROR_CHECK(write8(TCS3472_PERS, TCS3472_PERS_1_CYCLE));
-
     // Enable interrupt
     ESP_ERROR_CHECK(write8(TCS3472_ENABLE, TCS3472_ENABLE_PON | TCS3472_ENABLE_AEN | TCS3472_ENABLE_AIEN));
 
-    // Set interrupt thresholds
-    ESP_ERROR_CHECK(update_thresholds_from_clear());
-
-
+    // Set persistence filter
+    ESP_ERROR_CHECK(set_persistence_filter(TCS3472_PERS_1_CYCLE));
     // Clear any pending interrupts
     ESP_ERROR_CHECK(clear_pending_interrupts());
-
 
     return ESP_OK;
 }
@@ -396,7 +389,7 @@ esp_err_t init_chamelamp(gpio_num_t scl_pin, gpio_num_t sda_pin)
     vTaskDelay(pdMS_TO_TICKS(50));
 
     // Update thresholds
-    update_thresholds_from_clear();
+    ESP_ERROR_CHECK(update_thresholds_from_clear());
 
     ESP_LOGI(TAG, "TCS34727 initialized successfully.");
 
