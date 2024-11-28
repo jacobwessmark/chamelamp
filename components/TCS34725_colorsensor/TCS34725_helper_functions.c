@@ -172,6 +172,8 @@ void enable_wakeup(gpio_num_t int_pin)
     ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(THRESHOLD_UPDATE_INTERVAL_US));
 }
 
+
+
 void deep_sleep_with_deinitialized_i2c(i2c_master_bus_handle_t i2c_master_bus_handle)
 {
     deinitialize_i2c_driver(i2c_master_bus_handle);

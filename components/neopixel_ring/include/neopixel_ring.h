@@ -28,3 +28,4 @@ void set_single_led(NeopixelRing *ring, int led_index,               // Set colo
 void turn_off_all_rings(NeopixelRing *rings, size_t ring_count);     // Turn off all LEDs in all rings
 void fade_to_color(NeopixelRing *ring,                               // Smoothly transition to new color
                   uint8_t target_r, uint8_t target_g, uint8_t target_b);
+void prepare_rings_for_sleep(NeopixelRing *rings, size_t ring_count);

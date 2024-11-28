@@ -1,6 +1,8 @@
 #include "neopixel_ring.h"
+#include "driver/gpio.h"
+#include "esp_log.h"
 
-static const char *TAG = "NEOPIXEL_RING";
+static const char *TAG = "neopixel_ring";
 
 // Define the NeopixelRing structure with stored color values
 
@@ -133,5 +135,26 @@ void turn_off_all_rings(NeopixelRing *rings, size_t ring_count)
     for (size_t i = 0; i < ring_count; i++)
     {
         fade_to_color(&rings[i], 0, 0, 0);
+    }
+}
+
+void prepare_rings_for_sleep(NeopixelRing *rings, size_t ring_count)
+{
+    // First, turn off all LEDs
+    for (size_t i = 0; i < ring_count; i++) {
+        fade_to_color(&rings[i], 0, 0, 0);
+    }
+
+    // Configure GPIOs as outputs and set them low
+    for (size_t i = 0; i < ring_count; i++) {
+        gpio_config_t io_conf = {
+            .pin_bit_mask = (1ULL << rings[i].gpio_pin),
+            .mode = GPIO_MODE_OUTPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_ENABLE,
+            .intr_type = GPIO_INTR_DISABLE,
+        };
+        gpio_config(&io_conf);
+        gpio_set_level(rings[i].gpio_pin, 0);
     }
 }

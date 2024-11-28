@@ -193,6 +193,10 @@ void data_acquisition_task(void *param)
                     ESP_LOGI(TAG, "Black detected - fading to black");
                     fade_to_color(big_ring, 0, 0, 0);
                     fade_to_color(small_ring, 0, 0, 0);
+                    
+                    // Prepare LED rings for sleep
+                    NeopixelRing rings_array[] = {*small_ring, *big_ring};
+                    prepare_rings_for_sleep(rings_array, 2);
 
                     // Send black color to the queue
                     rgb_data.red = 0;
@@ -212,6 +216,7 @@ void data_acquisition_task(void *param)
                     black_detect_count = 0;
 
                     vTaskDelay(pdMS_TO_TICKS(500));
+
 
                     // New thresholds with led turned off
                     update_thresholds_from_clear();

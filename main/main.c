@@ -46,7 +46,10 @@ void app_main(void)
         }
 
         // Enable wakeup
-        enable_wakeup(TCS_INT_PIN); 
+        enable_wakeup(TCS_INT_PIN);
+
+        // Prepare LED rings for sleep
+        prepare_rings_for_sleep(rings, sizeof(rings) / sizeof(rings[0]));
 
         // Sleep and deinitialize I2C bus
         deep_sleep_with_deinitialized_i2c(i2c_bus_handle);
@@ -96,6 +99,9 @@ void app_main(void)
 
         // Enable wakeup
         enable_wakeup(TCS_INT_PIN);
+
+        // Prepare LED rings for sleep
+        prepare_rings_for_sleep(rings, sizeof(rings) / sizeof(rings[0]));
 
         // Sleep and deinitialize I2C bus
         deep_sleep_with_deinitialized_i2c(i2c_bus_handle);
