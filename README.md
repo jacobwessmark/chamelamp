@@ -2,9 +2,9 @@
 
 ## Overview
 
-Chamelamp is a color-matching lamp system that consists of a sender and receiver unit. The sender unit features a high-precision TCS34725 color sensor surrounded by two NeoPixel LED rings, allowing it to both detect and reproduce colors from its environment. When the sensor detects a color from any object or surface, the LED rings instantly illuminate to match that color, creating a dynamic and interactive lighting experience.
+Chamelamp is a color-matching lamp system that consists of a sender and receiver unit. The sender unit features a high-precision TCS34725 color sensor surrounded by two NeoPixel LED rings, allowing it to both detect and reproduce colors from its environment. When the sensor detects a color from any object or surface, the LED rings instantly illuminate to match that color, creating an interactive lighting experience.
 
-The system uses ESP-NOW wireless communication to enable a receiver unit to mirror the same colors remotely. This creates possibilities for synchronized ambient lighting across different locations or rooms. The sender unit is battery-powered with 4 AA batteries, making it portable and easy to use anywhere.
+The system uses ESP-NOW wireless communication to enable a receiver unit to mirror the same colors remotely. In the future, it will support DMX capabilities; currently, it only shows the color on an LCD display.
 
 Key applications include:
 - Ambient lighting that adapts to your environment
@@ -102,4 +102,3 @@ This project is licensed under the MIT License. See the LICENSE file for details
 ## Acknowledgments
 
 - Zorxx Software for the NeoPixel driver.
-- ESP-IDF for the development framework.
