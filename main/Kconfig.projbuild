@@ -1,4 +1,4 @@
-menu "ESP-NOW Device Configuration"
+menu "Chamelamp Configuration"
 
     choice DEVICE_MODE
         prompt "Device Mode"
@@ -16,5 +16,17 @@ menu "ESP-NOW Device Configuration"
             help
                 Configure as receiver device with LCD display.
     endchoice
+
+    config WIFI_SSID
+        string "WiFi SSID"
+        default "my_ap_ssid"
+        help
+            Set the SSID of the WiFi network.
+
+    config WIFI_PASS
+        string "WiFi Password"
+        default "my_ap_password"
+        help
+            Set the password of the WiFi network.
 
 endmenu

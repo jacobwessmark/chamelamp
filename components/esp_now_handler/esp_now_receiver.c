@@ -83,34 +83,11 @@ static void esp_now_recv_cb(const esp_now_recv_info_t *info, const uint8_t *data
     }
 }
 
-static esp_err_t init_wifi(void)
-{
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_ERROR_CHECK(esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE));
-
-    return ESP_OK;
-}
 
 esp_err_t initialize_esp_now_receiver(void)
 {
-    // Initialize WiFi
-    esp_err_t ret = init_wifi();
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "WiFi initialization failed");
-        return ret;
-    }
 
-    // Initialize ESP-NOW
-    ret = esp_now_init();
+    esp_err_t ret = esp_now_init();
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "ESP-NOW initialization failed");
@@ -124,6 +101,17 @@ esp_err_t initialize_esp_now_receiver(void)
         ESP_LOGE(TAG, "Failed to register receive callback: %s", esp_err_to_name(ret));
         esp_now_deinit();
         return ret;
+    }
+
+    // Verify channel before proceeding
+    uint8_t current_channel;
+    wifi_second_chan_t second;
+    esp_wifi_get_channel(&current_channel, &second);
+    
+    if (current_channel != ESPNOW_CHANNEL) {
+        ESP_LOGW(TAG, "Channel mismatch detected. WiFi: %d, Expected: %d. Resetting channel.", 
+                current_channel, ESPNOW_CHANNEL);
+        esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
     }
 
     ESP_LOGI(TAG, "ESP-NOW receiver initialized successfully");

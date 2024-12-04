@@ -22,35 +22,35 @@ uint8_t BLACK_THRESHOLD = 100;
 // Each color includes variations to improve recognition accuracy
 RGBColor rgb_colors[] = {
     // Red spectrum colors
-    {"Red", 255, 0, 0},              // Pure red
-    {"Bright Red", 255, 20, 20},     // Slightly lighter red
-    {"Dark Red", 200, 0, 0},         // Darker shade of red
-    {"Deep Red", 180, 0, 0},         // Very dark red
-    {"Ruby Red", 155, 0, 20},        // Red with slight blue tint
+    {"Red", 255, 0, 0},          // Pure red
+    {"Bright Red", 255, 20, 20}, // Slightly lighter red
+    {"Dark Red", 200, 0, 0},     // Darker shade of red
+    {"Deep Red", 180, 0, 0},     // Very dark red
+    {"Ruby Red", 155, 0, 20},    // Red with slight blue tint
 
     // Orange spectrum colors
-    {"Reddish-Orange", 255, 64, 0},  // Red-leaning orange
-    {"Orange", 255, 128, 0},         // Pure orange
-    {"Yellow-Orange", 255, 191, 0},  // Orange-yellow transition
+    {"Reddish-Orange", 255, 64, 0}, // Red-leaning orange
+    {"Orange", 255, 128, 0},        // Pure orange
+    {"Yellow-Orange", 255, 191, 0}, // Orange-yellow transition
 
     // Yellow spectrum colors
-    {"Yellow", 255, 255, 0},         // Pure yellow
-    {"Dark Yellow", 204, 204, 0},    // Muted yellow
-    {"Yellow-Green", 191, 255, 0},   // Yellow with green tint
+    {"Yellow", 255, 255, 0},       // Pure yellow
+    {"Dark Yellow", 204, 204, 0},  // Muted yellow
+    {"Yellow-Green", 191, 255, 0}, // Yellow with green tint
 
     // Green spectrum colors
-    {"Green", 0, 255, 0},            // Pure green
-    {"Spring Green", 0, 255, 127},   // Bright yellow-green
-    {"Lime Green", 50, 205, 50},     // Natural green
+    {"Green", 0, 255, 0},          // Pure green
+    {"Spring Green", 0, 255, 127}, // Bright yellow-green
+    {"Lime Green", 50, 205, 50},   // Natural green
 
     // Blue and Cyan spectrum colors
-    {"Cyan", 0, 255, 255},           // Pure cyan
-    {"Light Blue", 0, 127, 255},     // Sky blue
-    {"Blue", 0, 0, 255},             // Pure blue
+    {"Cyan", 0, 255, 255},       // Pure cyan
+    {"Light Blue", 0, 127, 255}, // Sky blue
+    {"Blue", 0, 0, 255},         // Pure blue
 
     // Purple and Pink spectrum colors
-    {"Purple", 128, 0, 128},         // Pure purple
-    {"Pink", 255, 0, 128},           // Bright pink
+    {"Purple", 128, 0, 128}, // Pure purple
+    {"Pink", 255, 0, 128},   // Bright pink
 
 };
 
@@ -137,9 +137,9 @@ void data_acquisition_task(void *param)
 
     // Initialize ring control structures
     NeopixelRing *rings = (NeopixelRing *)param;
-    NeopixelRing *big_ring = &rings[1];          // Primary LED ring
-    NeopixelRing *small_ring = &rings[0];        // Secondary LED ring
-    
+    NeopixelRing *big_ring = &rings[1];   // Primary LED ring
+    NeopixelRing *small_ring = &rings[0]; // Secondary LED ring
+
     // Color measurement variables
     uint16_t r, g, b, c;
     uint8_t r_8bit, g_8bit, b_8bit;
@@ -167,6 +167,11 @@ void data_acquisition_task(void *param)
     int stable_color_count = 0;
     int black_detect_count = 0;
 
+    // Time tracking variables
+    int elapsed_time = 0;
+
+    ESP_LOGI(TAG, "Data acquisition task started");
+
     while (1)
     {
         // Reset watchdog timer to prevent system reset
@@ -179,13 +184,12 @@ void data_acquisition_task(void *param)
             g_8bit = map_value(g, 0, 65535, 0, 255);
             b_8bit = map_value(b, 0, 65535, 0, 255);
 
-            ESP_LOGI(TAG, "Current RGB: (%u, %u, %u)", r_8bit, g_8bit, b_8bit);
+            // ESP_LOGI(TAG, "Current RGB: (%u, %u, %u)", r_8bit, g_8bit, b_8bit);
 
             // Check if black detected
             uint8_t dynamic_black_threshold = (uint8_t)(c * BLACK_THRESHOLD_PERCENTAGE);
             if (r_8bit < dynamic_black_threshold && g_8bit < dynamic_black_threshold && b_8bit < dynamic_black_threshold)
             {
-
                 black_detect_count++;
                 if (black_detect_count >= STABLE_BLACK_THRESHOLD)
                 {
@@ -193,7 +197,7 @@ void data_acquisition_task(void *param)
                     ESP_LOGI(TAG, "Black detected - fading to black");
                     fade_to_color(big_ring, 0, 0, 0);
                     fade_to_color(small_ring, 0, 0, 0);
-                    
+
                     // Prepare LED rings for sleep
                     NeopixelRing rings_array[] = {*small_ring, *big_ring};
                     prepare_rings_for_sleep(rings_array, 2);
@@ -217,7 +221,6 @@ void data_acquisition_task(void *param)
 
                     vTaskDelay(pdMS_TO_TICKS(500));
 
-
                     // New thresholds with led turned off
                     update_thresholds_from_clear();
 
@@ -230,7 +233,8 @@ void data_acquisition_task(void *param)
             }
             else
             {
-                black_detect_count = 0; // Reset if not black
+                // Reset black detect count if not black
+                black_detect_count = 0;
             }
 
             // Find closest predefined color
@@ -298,7 +302,7 @@ void data_acquisition_task(void *param)
                 {
                     // Color changed, reset counter
                     stable_color_count = 0;
-                    ESP_LOGI(TAG, "Color changed - reset stability counter");
+                    //ESP_LOGI(TAG, "Color changed - reset stability counter");
                 }
 
                 // Update last color
@@ -310,6 +314,16 @@ void data_acquisition_task(void *param)
             // Move to next position
             current_position = (current_position + 1) % big_ring->led_count;
         }
+
+        // Check if 10 seconds have passed
+/*         elapsed_time += 50;        // Increment by the delay time in milliseconds
+        if (elapsed_time >= 10000) // 10 seconds
+        {
+            ESP_LOGI(TAG, "10 seconds elapsed, connecting to WiFi");
+            connect_to_wifi();
+            elapsed_time = 0; // Reset the timer
+        } */
+
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
@@ -351,27 +365,14 @@ esp_err_t configure_and_initialize_sensor(gpio_num_t scl_pin, gpio_num_t sda_pin
 
     ESP_ERROR_CHECK(initialize_i2c_bus(scl_pin, sda_pin));
 
-    // Initialize the sensor
+    // Initialize sensor with settings
     ESP_ERROR_CHECK(check_device_id());
-
-    // Power ON
-    ESP_ERROR_CHECK(write8(TCS3472_ENABLE, TCS3472_ENABLE_PON));
-    vTaskDelay(pdMS_TO_TICKS(3)); // Wait 2.4ms for power up
-
-    // Set integration time and gain
-    ESP_ERROR_CHECK(write8(TCS3472_ATIME, TCS3472_INTEGRATION_TIME_700MS));
-    ESP_ERROR_CHECK(write8(TCS3472_CONTROL, TCS3472_GAIN_60X));
-
-    // Enable ADC
-    ESP_ERROR_CHECK(write8(TCS3472_ENABLE, TCS3472_ENABLE_PON | TCS3472_ENABLE_AEN));
-    vTaskDelay(pdMS_TO_TICKS(50)); // Wait for ADC to stabilize
-
-    // Enable interrupt
-    ESP_ERROR_CHECK(write8(TCS3472_ENABLE, TCS3472_ENABLE_PON | TCS3472_ENABLE_AEN | TCS3472_ENABLE_AIEN));
-
-    // Set persistence filter
+    ESP_ERROR_CHECK(power_on_sensor(true));
+    ESP_ERROR_CHECK(set_integration_time(TCS3472_INTEGRATION_TIME_700MS));
+    ESP_ERROR_CHECK(set_gain(TCS3472_GAIN_60X));
+    ESP_ERROR_CHECK(enable_adc(true));
+    ESP_ERROR_CHECK(enable_interrupt(true));
     ESP_ERROR_CHECK(set_persistence_filter(TCS3472_PERS_1_CYCLE));
-    // Clear any pending interrupts
     ESP_ERROR_CHECK(clear_pending_interrupts());
 
     return ESP_OK;
@@ -380,6 +381,7 @@ esp_err_t configure_and_initialize_sensor(gpio_num_t scl_pin, gpio_num_t sda_pin
 // start task
 void start_data_acquisition_task(NeopixelRing *rings)
 {
+    vTaskDelay(pdMS_TO_TICKS(100));
     xTaskCreate(data_acquisition_task, "data_acquisition_task", 4096, rings, 5, NULL);
 }
 

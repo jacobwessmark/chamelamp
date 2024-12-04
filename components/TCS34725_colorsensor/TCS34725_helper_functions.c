@@ -111,8 +111,14 @@ esp_err_t set_persistence_filter(uint8_t persistence_value)
 
 esp_err_t enable_adc(bool enable)
 {
-    uint8_t reg_value = enable ? TCS3472_ENABLE_AEN : 0x00;
-    write8(TCS3472_ENABLE, reg_value);
+    if (enable)
+    {
+        ESP_ERROR_CHECK(write8(TCS3472_ENABLE, TCS3472_ENABLE_PON | TCS3472_ENABLE_AEN));
+    }
+    else
+    {
+        ESP_ERROR_CHECK(write8(TCS3472_ENABLE, 0x00));
+    }
     vTaskDelay(pdMS_TO_TICKS(50)); // ADC stabilization delay
     return ESP_OK;
 }
@@ -136,9 +142,11 @@ esp_err_t clear_pending_interrupts()
 
 esp_err_t enable_interrupt(bool enable)
 {
-    uint8_t value = enable ? TCS3472_ENABLE_AIEN : 0x00;
+    uint8_t value = enable ? (TCS3472_ENABLE_PON | TCS3472_ENABLE_AEN | TCS3472_ENABLE_AIEN) : 0x00;
     return write8(TCS3472_ENABLE, value);
 }
+
+
 
 // I2C Driver Management Functions
 esp_err_t deinitialize_i2c_driver(i2c_master_bus_handle_t i2c_master_bus_handle)

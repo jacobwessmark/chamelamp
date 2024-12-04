@@ -9,6 +9,7 @@
 #include "nvs_handler.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "wifi_manager.h"
 
 static const char *TAG = "Main";
 
@@ -59,8 +60,11 @@ void app_main(void)
     case ESP_SLEEP_WAKEUP_EXT0:
         printf("Wakeup deep sleep caused by external signal using RTC_IO\n");
 
+        // Initialize wifi
+        initialize_wifi();
+
         // turn on small ring
-        fade_to_color(&rings[0], 255, 255, 255);
+        fade_to_color(&rings[0], 150, 150, 150);
 
         // Initialize color sensor with all rings
         if (init_chamelamp(TCS_I2C_MASTER_SCL_IO, TCS_I2C_MASTER_SDA_IO) != ESP_OK)
@@ -113,6 +117,9 @@ void app_main(void)
 #else // CONFIG_DEVICE_MODE_RECEIVER
     ESP_LOGI(TAG, "Initializing device as ESP-NOW receiver with LCD");
 
+    // Initialize wifi
+    initialize_wifi();
+
     // Initialize NVS handler first
     ESP_ERROR_CHECK(nvs_handler_init());
 
@@ -133,8 +140,9 @@ void app_main(void)
         else
         {
             // Display the last saved color
-            lcd_display_text("Chamelamp", 0);
             char display_text[40];
+            snprintf(display_text, sizeof(display_text), "Chamelamp (Ch:%d)", ESPNOW_CHANNEL);
+            lcd_display_text(display_text, 0);
             snprintf(display_text, sizeof(display_text), "Last: %s", last_color_name);
             lcd_display_text(display_text, 1);
         }

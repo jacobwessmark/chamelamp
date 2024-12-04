@@ -2,6 +2,8 @@
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 
+#define ESPNOW_CHANNEL 1 // Define a fixed channel for ESP-NOW communication
+
 static const char *TAG = "ESP-NOW_Sender";
 static QueueHandle_t rgb_send_queue;
 
@@ -29,29 +31,23 @@ static void init_broadcast_peer(void)
         broadcast_peer.peer_addr[i] = 0xFF;
     }
 
-    broadcast_peer.channel = ESPNOW_CHANNEL;
+    // Use the fixed ESP-NOW channel defined in wifi_manager.h
+    broadcast_peer.channel = ESPNOW_CHANNEL;  // This should be 1
     broadcast_peer.encrypt = false;
+
+    ESP_LOGI(TAG, "Setting ESP-NOW broadcast to channel %d", ESPNOW_CHANNEL);
 }
 
 static bool manage_peer(void)
 {
-    if (DELETEBEFOREPAIR)
-    {
-        esp_now_del_peer(broadcast_peer.peer_addr);
-    }
-
-    // Check if peer exists
-    if (esp_now_is_peer_exist(broadcast_peer.peer_addr))
-    {
-        ESP_LOGI(TAG, "Broadcast peer already paired");
-        return true;
-    }
+    // Always delete existing peer to ensure channel is updated
+    esp_now_del_peer(broadcast_peer.peer_addr);
 
     // Attempt to add peer
     esp_err_t result = esp_now_add_peer(&broadcast_peer);
     if (result == ESP_OK)
     {
-        ESP_LOGI(TAG, "Broadcast peer added successfully");
+        ESP_LOGI(TAG, "Broadcast peer added successfully on channel %d", broadcast_peer.channel);
         return true;
     }
 
@@ -59,26 +55,10 @@ static bool manage_peer(void)
     return false;
 }
 
-static esp_err_t init_wifi(void)
-{
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_ERROR_CHECK(esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE));
-
-    return ESP_OK;
-}
-
 static void esp_now_send_task(void *param)
 {
     rgb_data_t rgb_data;
-
+    
     // Add this task to the WDT
     esp_task_wdt_add(NULL);
 
@@ -86,18 +66,33 @@ static void esp_now_send_task(void *param)
     {
         if (xQueueReceive(rgb_send_queue, &rgb_data, portMAX_DELAY) == pdTRUE)
         {
+            // Verify channel before sending
+            uint8_t current_channel;
+            wifi_second_chan_t second;
+            esp_wifi_get_channel(&current_channel, &second);
+            
+            if (current_channel != ESPNOW_CHANNEL) {
+                ESP_LOGW(TAG, "Channel mismatch detected. WiFi: %d, Expected: %d. Resetting channel.", 
+                        current_channel, ESPNOW_CHANNEL);
+                esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
+            }
+
             esp_err_t result = esp_now_send(broadcast_peer.peer_addr,
-                                            (uint8_t *)&rgb_data,
-                                            sizeof(rgb_data_t));
+                                          (uint8_t *)&rgb_data,
+                                          sizeof(rgb_data_t));
 
             if (result == ESP_OK)
             {
-                ESP_LOGI(TAG, "Sent RGB data - R: %d, G: %d, B: %d",
-                         rgb_data.red, rgb_data.green, rgb_data.blue);
+                ESP_LOGI(TAG, "Sent RGB data - R: %d, G: %d, B: %d on channel %d",
+                         rgb_data.red, rgb_data.green, rgb_data.blue, ESPNOW_CHANNEL);
             }
             else
             {
                 ESP_LOGE(TAG, "Failed to send RGB data: %s", esp_err_to_name(result));
+                // Re-add peer with correct channel if send fails
+                if (result == ESP_ERR_ESPNOW_CHAN) {
+                    manage_peer();
+                }
             }
         }
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -107,16 +102,8 @@ static void esp_now_send_task(void *param)
 
 esp_err_t initialize_esp_now_sender(void)
 {
-    // Initialize WiFi
-    esp_err_t ret = init_wifi();
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "WiFi initialization failed");
-        return ret;
-    }
 
-    // Initialize ESP-NOW
-    ret = esp_now_init();
+    esp_err_t ret = esp_now_init();
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "ESP-NOW initialization failed");

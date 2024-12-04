@@ -102,7 +102,7 @@
 #define BLACK_THRESHOLD_PERCENTAGE 0.01 // Percentage of maximum value (65535) for black detection
 
 // Deep Sleep Configuration
-#define THRESHOLD_UPDATE_INTERVAL_US 2 * 1000000  // Threshold update interval in microseconds
+#define THRESHOLD_UPDATE_INTERVAL_US 5 * 1000000  // Threshold update interval in microseconds
 
 // External variable declarations
 extern RGBColor rgb_colors[];

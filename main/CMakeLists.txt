@@ -16,5 +16,5 @@ endif()
 idf_component_register(
     SRCS "main.c"
     INCLUDE_DIRS "."
-    REQUIRES esp_now_handler ${EXTRA_REQUIRES} nvs_handler
+    REQUIRES esp_now_handler ${EXTRA_REQUIRES} nvs_handler wifi_manager
 )
